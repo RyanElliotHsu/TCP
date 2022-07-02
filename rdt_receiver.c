@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h> 
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -11,6 +11,7 @@
 
 #include "common.h"
 #include "packet.h"
+
 
 
 /*
@@ -33,8 +34,8 @@ int main(int argc, char **argv) {
     char buffer[MSS_SIZE];
     struct timeval tp;
 
-    /* 
-     * check command line arguments 
+    /*
+     * check command line arguments
      */
     if (argc != 3) {
         fprintf(stderr, "usage: %s <port> FILE_RECVD\n", argv[0]);
@@ -47,20 +48,20 @@ int main(int argc, char **argv) {
         error(argv[2]);
     }
 
-    /* 
-     * socket: create the parent socket 
+    /*
+     * socket: create the parent socket
      */
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) 
+    if (sockfd < 0)
         error("ERROR opening socket");
 
-    /* setsockopt: Handy debugging trick that lets 
-     * us rerun the server immediately after we kill it; 
-     * otherwise we have to wait about 20 secs. 
-     * Eliminates "ERROR on binding: Address already in use" error. 
+    /* setsockopt: Handy debugging trick that lets
+     * us rerun the server immediately after we kill it;
+     * otherwise we have to wait about 20 secs.
+     * Eliminates "ERROR on binding: Address already in use" error.
      */
     optval = 1;
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, 
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
             (const void *)&optval , sizeof(int));
 
     /*
@@ -71,14 +72,14 @@ int main(int argc, char **argv) {
     serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
     serveraddr.sin_port = htons((unsigned short)portno);
 
-    /* 
-     * bind: associate the parent socket with a port 
+    /*
+     * bind: associate the parent socket with a port
      */
-    if (bind(sockfd, (struct sockaddr *) &serveraddr, 
-                sizeof(serveraddr)) < 0) 
+    if (bind(sockfd, (struct sockaddr *) &serveraddr,
+                sizeof(serveraddr)) < 0)
         error("ERROR on binding");
 
-    /* 
+    /*
      * main loop: wait for a datagram, then echo it
      */
     VLOG(DEBUG, "epoch time, bytes received, sequence number");
@@ -100,8 +101,8 @@ int main(int argc, char **argv) {
             fclose(fp);
             break;
         }
-        /* 
-         * sendto: ACK back to the client 
+        /*
+         * sendto: ACK back to the client
          */
         gettimeofday(&tp, NULL);
         VLOG(DEBUG, "%lu, %d, %d", tp.tv_sec, recvpkt->hdr.data_size, recvpkt->hdr.seqno);
@@ -111,7 +112,7 @@ int main(int argc, char **argv) {
         sndpkt = make_packet(0);
         sndpkt->hdr.ackno = recvpkt->hdr.seqno + recvpkt->hdr.data_size;
         sndpkt->hdr.ctr_flags = ACK;
-        if (sendto(sockfd, sndpkt, TCP_HDR_SIZE, 0, 
+        if (sendto(sockfd, sndpkt, TCP_HDR_SIZE, 0,
                 (struct sockaddr *) &clientaddr, clientlen) < 0) {
             error("ERROR in sendto");
         }
