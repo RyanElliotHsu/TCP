@@ -175,41 +175,70 @@ int main (int argc, char **argv)
         sndpkt = make_packet(len);
         memcpy(sndpkt->data, buffer, len);
         sndpkt->hdr.seqno = send_base;
+
         //Wait for ACK
-        do {
-
-            VLOG(DEBUG, "Sending packet %d to %s", 
-                    send_base, inet_ntoa(serveraddr.sin_addr));
-            /*
-             * If the sendto is called for the first time, the system will
-             * will assign a random port number so that server can send its
-             * response to the src port.
-             */
-            if(sendto(sockfd, sndpkt, TCP_HDR_SIZE + get_data_size(sndpkt), 0, 
-                        ( const struct sockaddr *)&serveraddr, serverlen) < 0)
-            {
-                error("sendto");
-            }
-
-            start_timer();
-            //ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
-            //struct sockaddr *src_addr, socklen_t *addrlen);
-
-            do
-            {
-                if(recvfrom(sockfd, buffer, MSS_SIZE, 0,
+        if(recvfrom(sockfd, buffer, MSS_SIZE, 0,
                             (struct sockaddr *) &serveraddr, (socklen_t *)&serverlen) < 0)
                 {
                     error("recvfrom");
                 }
+        recvpkt = (tcp_packet *)buffer;
 
-                recvpkt = (tcp_packet *)buffer;
-                printf("%d \n", get_data_size(recvpkt));
-                assert(get_data_size(recvpkt) <= DATA_SIZE);
-            }while(recvpkt->hdr.ackno < next_seqno);    //ignore duplicate ACKs
-            stop_timer();   //triggers timer which calls resend function
-            /*resend pack if don't recv ACK */
-        } while(recvpkt->hdr.ackno != next_seqno);      
+        //increment count of lastest ACK if ACK is duplicate
+        if (recvpkt->hdr.ackno == lastACKed) //not sure if ackno is last # received or the next expected
+        {
+            ackCount += 1;
+        }
+
+        //three duplicate ACKS => fast retransmission
+        if (ackCount>=3)
+        {
+            resend_packets(0);  //idk what the parameter means yet
+        }
+
+        //new ACK received
+        else
+        {
+            ackCount = 1;
+            //remove all packets up to ACK received
+            //could (maybe) make a seperate function for this
+            //remember to free pkt pointers while removing them
+        }
+
+        // do {
+
+        //     VLOG(DEBUG, "Sending packet %d to %s", 
+        //             send_base, inet_ntoa(serveraddr.sin_addr));
+        //     /*
+        //      * If the sendto is called for the first time, the system will
+        //      * will assign a random port number so that server can send its
+        //      * response to the src port.
+        //      */
+        //     if(sendto(sockfd, sndpkt, TCP_HDR_SIZE + get_data_size(sndpkt), 0, 
+        //                 ( const struct sockaddr *)&serveraddr, serverlen) < 0)
+        //     {
+        //         error("sendto");
+        //     }
+
+        //     start_timer();
+        //     //ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
+        //     //struct sockaddr *src_addr, socklen_t *addrlen);
+
+        //     do
+        //     {
+        //         if(recvfrom(sockfd, buffer, MSS_SIZE, 0,
+        //                     (struct sockaddr *) &serveraddr, (socklen_t *)&serverlen) < 0)
+        //         {
+        //             error("recvfrom");
+        //         }
+
+        //         recvpkt = (tcp_packet *)buffer;
+        //         printf("%d \n", get_data_size(recvpkt));
+        //         assert(get_data_size(recvpkt) <= DATA_SIZE);
+        //     }while(recvpkt->hdr.ackno < next_seqno);    //ignore duplicate ACKs
+        //     stop_timer();   //triggers timer which calls resend function
+        //     /*resend pack if don't recv ACK */
+        // } while(recvpkt->hdr.ackno != next_seqno);      
 
         free(sndpkt);
     }
