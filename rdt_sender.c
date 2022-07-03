@@ -27,7 +27,10 @@ struct itimerval timer;
 tcp_packet *sndpkt;
 tcp_packet *recvpkt;
 sigset_t sigmask;
+
+//array of packet pointers being sent
 tcp_packet *window[WINDOW_SIZE];
+//number of packets in window  
 int pktsStored=0;       
 
 
@@ -85,6 +88,8 @@ int main (int argc, char **argv)
     char *hostname;
     char buffer[DATA_SIZE];
     FILE *fp;
+    int lastACKed=0;
+    int ackCount;
 
     /* check command line arguments */
     if (argc != 4) {
@@ -126,7 +131,7 @@ int main (int argc, char **argv)
     next_seqno = 0;
     while (1)
     {
-        //fill the array of packets sent to window size
+        //fill the (array of packets sent) to (window size)
         while (pktsStored<WINDOW_SIZE)
         {
             len = fread(buffer, 1, DATA_SIZE, fp);
@@ -141,7 +146,11 @@ int main (int argc, char **argv)
                 break;
             }
 
-
+            //add packets to array
+            for (int i=pktsStored-1; i<WINDOW_SIZE; i++)
+            {
+                window[i] = sndpkt;
+            }
         }
 
         //send all packages in window that are not yet sent
