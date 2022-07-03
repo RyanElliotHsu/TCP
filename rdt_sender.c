@@ -31,7 +31,8 @@ sigset_t sigmask;
 //array of packet pointers being sent
 tcp_packet *window[WINDOW_SIZE];
 //number of packets in window  
-int pktsStored=0;       
+int pktsStored=0;  
+    
 
 
 void resend_packets(int sig)
@@ -83,13 +84,15 @@ void init_timer(int delay, void (*sig_handler)(int))
 
 int main (int argc, char **argv)
 {
-    int portno, len;
+    int portno;
+    int len = 1;
     int next_seqno;
     char *hostname;
     char buffer[DATA_SIZE];
     FILE *fp;
     int lastACKed=0;
     int ackCount;
+    int deleted;
 
     /* check command line arguments */
     if (argc != 4) {
@@ -134,7 +137,7 @@ int main (int argc, char **argv)
         //fill the (array of packets sent) to (window size)
         while (pktsStored<WINDOW_SIZE)
         {
-            len = fread(buffer, 1, DATA_SIZE, fp);
+            
 
             //if end of file reached, send pkt notifying receiver
             if ( len <= 0)
@@ -149,6 +152,12 @@ int main (int argc, char **argv)
             //add packets to array
             for (int i=pktsStored-1; i<WINDOW_SIZE; i++)
             {
+                len = fread(buffer, 1, DATA_SIZE, fp);
+                send_base = next_seqno;
+                next_seqno = send_base + len;
+                sndpkt = make_packet(len);
+                memcpy(sndpkt->data, buffer, len);
+                sndpkt->hdr.seqno = send_base;
                 window[i] = sndpkt;
             }
         }
@@ -163,6 +172,9 @@ int main (int argc, char **argv)
                 {
                     error("sendto");
                 }
+                else{
+                    window[i]->hdr.sent_flag = 1;
+                }
 
                 if (i==0){
                     start_timer();
@@ -170,11 +182,6 @@ int main (int argc, char **argv)
             }
         }
         
-        send_base = next_seqno;
-        next_seqno = send_base + len;
-        sndpkt = make_packet(len);
-        memcpy(sndpkt->data, buffer, len);
-        sndpkt->hdr.seqno = send_base;
 
         //Wait for ACK
         if(recvfrom(sockfd, buffer, MSS_SIZE, 0,
@@ -183,27 +190,55 @@ int main (int argc, char **argv)
                     error("recvfrom");
                 }
         recvpkt = (tcp_packet *)buffer;
+        
 
         //increment count of lastest ACK if ACK is duplicate
-        if (recvpkt->hdr.ackno == lastACKed) //not sure if ackno is last # received or the next expected
+        if (recvpkt->hdr.ackno == lastACKed) //ackno is the next expected
         {
             ackCount += 1;
-        }
 
-        //three duplicate ACKS => fast retransmission
-        if (ackCount>=3)
-        {
-            resend_packets(0);  //idk what the parameter means yet
+            //three duplicate ACKS => fast retransmission
+            if (ackCount>=3)
+            {
+                resend_packets(SIGALRM);  //idk what the parameter means yet
+            }
         }
-
         //new ACK received
         else
         {
             ackCount = 1;
+            lastACKed = recvpkt->hdr.ackno;
             //remove all packets up to ACK received
             //could (maybe) make a seperate function for this
             //remember to free pkt pointers while removing them
+            for (int i = 0; i < WINDOW_SIZE; i++)
+            {
+                if (window[i]->hdr.seqno < lastACKed)
+                {
+                    free(window[i]);
+                    //decrease the num of packets stored
+                    pktsStored--;
+                }
+            }
+            //keep count of how many deleted
+            deleted = WINDOW_SIZE-pktsStored;
+            for (int i = 0; i < WINDOW_SIZE-deleted; i++)
+            {
+                //shift based on number of those deleted
+                window[i] = window[i+deleted];
+            }
+            for (int i = WINDOW_SIZE; i < WINDOW_SIZE-deleted; i--)
+            {
+                //free the shifted packets in the array
+                free(window[i]);
+            }
         }
+
+        //not sure of placement
+        stop_timer();
+        resend_packets(SIGALRM);
+
+        
 
         // do {
 
@@ -240,7 +275,7 @@ int main (int argc, char **argv)
         //     /*resend pack if don't recv ACK */
         // } while(recvpkt->hdr.ackno != next_seqno);      
 
-        free(sndpkt);
+        //free(sndpkt);
     }
 
     return 0;
