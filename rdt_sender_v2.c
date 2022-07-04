@@ -44,8 +44,9 @@ void resend_packets(int sig)
     {
         //Resend all packets range between 
         //sendBase and nextSeqNum
-        VLOG(INFO, "Timout happend");
-        for (int i=0; i<WINDOW_SIZE; i++)
+        VLOG(INFO, "Timeout happend");
+        int filled_window = (int)(sizeof(window)/sizeof(window[0]))
+        for (int i=0; i<filled_window; i++)
         {
             printf("Resending packet with sequence no %d\n", window[i]->hdr.seqno);
             if(sendto(sockfd, window[i], TCP_HDR_SIZE + get_data_size(window[i]), 0,
