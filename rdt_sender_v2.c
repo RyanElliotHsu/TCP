@@ -125,6 +125,7 @@ void send_packets()
     //get size of filled array - in the end window can not be fully filled
     //addition of packets in start will maintain 10 window size at all times when possible
     int filled_window = (int)(sizeof(window)/sizeof(window[0]));
+    printf("filled_window : %d\n", filled_window);
     for (int i=0; i<filled_window; i++)
     {
         //check if not sent already - wont be needed but for extra security here
@@ -133,6 +134,7 @@ void send_packets()
             if(sendto(sockfd, window[i], TCP_HDR_SIZE + get_data_size(window[i]), 0,
                     ( const struct sockaddr *)&serveraddr, serverlen) < 0)
             {
+                printf("not sent %d\n",  window[i]->hdr.seqno);
                 error("sendto");
             }
             else{
@@ -177,6 +179,9 @@ int main (int argc, char **argv)
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) 
         error("ERROR opening socket");
+    else{
+        printf("socket opened\n");
+    }
 
 
     /* initialize server server details */
@@ -188,10 +193,15 @@ int main (int argc, char **argv)
         fprintf(stderr,"ERROR, invalid host %s\n", hostname);
         exit(0);
     }
+    else{
+        printf("valid host\n");
+    }
 
     /* build the server's Internet address */
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_port = htons(portno);
+
+    printf("builded server address\n");
 
     assert(MSS_SIZE - TCP_HDR_SIZE > 0);
 
@@ -200,30 +210,36 @@ int main (int argc, char **argv)
     
     while (1)
     {
-        //print array
-        for (int i=0; i<WINDOW_SIZE; i++) {
-            if (window[i]!=NULL) {
-                printf("%d |", window[i]->hdr.seqno);
-            }
-        }
-        printf("\n");
+        printf("started loop\n");
+
         
         //fill the (array of packets sent) to (window size)
         while (pktsStored<=WINDOW_SIZE)
         {
             add_packet(fp,len);
+            printf("added packets\n");
 
             //end program if EOF
             if (end_reached == 1) {
                 sndpkt = make_packet(0);
+                printf("last packet made\n");
                 VLOG(INFO, "End Of File has been reached");
                 sendto(sockfd, sndpkt, TCP_HDR_SIZE,  0,
                         (const struct sockaddr *)&serveraddr, serverlen);
                 return 0;
             }
         }
+
+        // print array
+        for (int i=0; i<WINDOW_SIZE; i++) {
+            if (window[i]!=NULL) {
+                printf("%d |\n", window[i]->hdr.seqno);
+            }
+        }
+        
         
         //send all packets in array
+        printf("going to send all in window\n");
         send_packets();
         
         //receive
