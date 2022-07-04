@@ -42,12 +42,39 @@ void resend_packets(int sig)
         //Resend all packets range between 
         //sendBase and nextSeqNum
         VLOG(INFO, "Timout happend");
-        if(sendto(sockfd, sndpkt, TCP_HDR_SIZE + get_data_size(sndpkt), 0, 
-                    ( const struct sockaddr *)&serveraddr, serverlen) < 0)
+        for (int i=0; i<WINDOW_SIZE; i++)
         {
-            error("sendto");
+            if(sendto(sockfd, sndpkt, TCP_HDR_SIZE + get_data_size(sndpkt), 0, 
+                    ( const struct sockaddr *)&serveraddr, serverlen) < 0)
+            {
+                error("sendto");
+            }
         }
     }
+}
+
+void fast_retransmission_resend()
+{
+    //send all packages in window that are not yet sent
+    for (int i=0; i<WINDOW_SIZE; i++)
+    {
+        if (window[i]->hdr.sent_flag==0)
+        {
+            if(sendto(sockfd, window[i], TCP_HDR_SIZE + get_data_size(window[i]), 0, 
+                    ( const struct sockaddr *)&serveraddr, serverlen) < 0)
+            {
+                error("sendto");
+            }
+            else{
+                window[i]->hdr.sent_flag = 1;
+            }
+
+            if (i==0){
+                start_timer();
+            }
+        }
+    }
+
 }
 
 
@@ -200,7 +227,7 @@ int main (int argc, char **argv)
             //three duplicate ACKS => fast retransmission
             if (ackCount>=3)
             {
-                resend_packets(SIGALRM);  //idk what the parameter means yet
+                fast_retransmission_resend();
             }
         }
         //new ACK received
@@ -276,6 +303,15 @@ int main (int argc, char **argv)
         // } while(recvpkt->hdr.ackno != next_seqno);      
 
         //free(sndpkt);
+    }
+
+    //free all pointers to packets
+    for (int i=0; i<WINDOW_SIZE; i++)
+    {
+        if(window[i]!=NULL)
+        {
+            free(window[i]);
+        }
     }
 
     return 0;
