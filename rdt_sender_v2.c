@@ -107,6 +107,8 @@ void init_timer(int delay, void (*sig_handler)(int))
 void add_packet(FILE *fp, int len)
 {
     len = fread(buffer, 1, DATA_SIZE, fp);
+    // printf("len is %d\n",len);
+    // printf("Buffer has %s",buffer);
     if (len <= 0) {
         end_reached = 1;
     } else {
@@ -115,9 +117,11 @@ void add_packet(FILE *fp, int len)
         sndpkt = make_packet(len);
         memcpy(sndpkt->data, buffer, len);
         sndpkt->hdr.seqno = send_base;
+        window[pktsStored] = sndpkt;
+        pktsStored++;
+        
     }
-    window[pktsStored] = sndpkt;
-    pktsStored++;
+    
 }
 
 void send_packets()
@@ -125,9 +129,10 @@ void send_packets()
     //get size of filled array - in the end window can not be fully filled
     //addition of packets in start will maintain 10 window size at all times when possible
     int filled_window = (int)(sizeof(window)/sizeof(window[0]));
-    printf("filled_window : %d\n", filled_window);
+    // printf("filled_window : %d\n", filled_window);
     for (int i=0; i<filled_window; i++)
     {
+        // printf("sockfd before sending pack num %d is %d\n", i, sockfd);
         //check if not sent already - wont be needed but for extra security here
         if (window[i]->hdr.sent_flag==0)
         {
@@ -179,10 +184,11 @@ int main (int argc, char **argv)
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) 
         error("ERROR opening socket");
-    else{
-        printf("socket opened\n");
-    }
+    // else{
+    //     printf("socket opened\n");
+    // }
 
+    // printf("sockfd is %d\n", sockfd);
 
     /* initialize server server details */
     bzero((char *) &serveraddr, sizeof(serveraddr));
@@ -193,15 +199,17 @@ int main (int argc, char **argv)
         fprintf(stderr,"ERROR, invalid host %s\n", hostname);
         exit(0);
     }
-    else{
-        printf("valid host\n");
-    }
+    // else{
+    //     printf("valid host\n");
+    // }
+
+    // printf("sockfd is %d\n", sockfd);
 
     /* build the server's Internet address */
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_port = htons(portno);
 
-    printf("builded server address\n");
+    // printf("builded server address\n");
 
     assert(MSS_SIZE - TCP_HDR_SIZE > 0);
 
@@ -210,14 +218,15 @@ int main (int argc, char **argv)
     
     while (1)
     {
-        printf("started loop\n");
+        // printf("started loop\n");
 
         
         //fill the (array of packets sent) to (window size)
-        while (pktsStored<=WINDOW_SIZE)
+        while (pktsStored<WINDOW_SIZE)
         {
             add_packet(fp,len);
-            printf("added packets\n");
+            // printf("added packet\n");
+            // printf("sockfd after adding the packet no . %d is %d\n", pktsStored,sockfd);
 
             //end program if EOF
             if (end_reached == 1) {
@@ -231,16 +240,17 @@ int main (int argc, char **argv)
         }
 
         // print array
-        for (int i=0; i<WINDOW_SIZE; i++) {
-            if (window[i]!=NULL) {
-                printf("%d |\n", window[i]->hdr.seqno);
-            }
-        }
-        
+        // for (int i=0; i<WINDOW_SIZE; i++) {
+        //     if (window[i]!=NULL) {
+        //         printf("%d |\n", window[i]->hdr.seqno);
+        //     }
+        // }
         
         //send all packets in array
-        printf("going to send all in window\n");
+        // printf("going to send all in window\n");
+        // printf("sockfd before sending all is %d\n", sockfd);
         send_packets();
+        // printf("sockfd after sending all is %d\n", sockfd);
         
         //receive
         if(recvfrom(sockfd, buffer, MSS_SIZE, 0,
