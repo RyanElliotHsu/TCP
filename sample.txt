@@ -1,0 +1,230 @@
+
+
+
+Test to perform different dunctionality:
+
+------------------TESTS TO AUTHENTICATE----------------------
+
+
+TEST Correct Username and Password
+1: USER bob/shan
+Expected Response: 331 Username OK, need password.
+2: PASS donuts/pass
+Expected Response: 230 User logged in, proceed.
+
+TEST Incorrect Username
+1: USER wrong_user
+Expected Response: "530 Not logged in\n"
+
+TEST Incorrect Password
+1: USER bob/shan
+Expected Response: 331 Username OK, need password.
+2: PASS wrong_password
+Expected Response: "530 Not logged in\n"
+
+
+--------------------GENERAL TESTS---------------------------------
+TEST Enter incorrect command
+1: USER1 bob
+Expected Response: command not identified
+2:PASS1 donuts
+Expected Response: command not identified
+3: WRONG_CMD
+Expected Response: command not identified
+
+TEST QUIT
+1: QUIT
+Expected Response: Connection Closed 
+
+
+--------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Here is the detailed feedback with evaluation performed with scoring in each task:
+
+Successful compiling of the programs using a Makefile - /1
+    Evaluated by runing make in terminal.
+
+Properly displaying and formatting of the command line user interface - /1
+    Checking the Output/User-interface after runing client-side program 
+
+Properly handling user authentication - /1
+    Perform these tests:
+    TEST Correct Username and Password : 0.5
+    Expected Response on Correct Username: 331 Username OK, need password.
+    Expected Response on Correct Password: 230 User logged in, proceed.
+
+    TEST Incorrect Username with "USER wronguser": 0.25
+    Expected Response: "530 Not logged in\n"
+
+    TEST Incorrect Password with "PASS wrongpass" : 0.25
+    Expected Response: "530 Not logged in\n"
+
+
+Handling concurrent connections and supporting multiple simultaneous users - /3
+
+    Perform these tests:
+    Connect two clients from two terminals: /2
+    authenticate them: /0.5
+    Perform below actions flawlessly: /0.5
+        check working directory of each: 
+        change working to their respective folders: 
+        check working directory again
+        quit one, check others are not affected: 
+        check working directory again of the other one
+        quit last
+
+
+Properly implementing PORT command - /2
+
+    Check the code base for code related to getting N (random port) 
+    from which client is connect to server on control connection: /0.25
+    Checking if dynamic port is created and sent to server for data connection N+1 on each data transfer: /0.25
+    Check if address:port is sent as character buffer (h1,h2,h3,h4,p1,p2): /0.25
+    Check if client create/open a data connection on port N+1 and 
+    server uses the received port to connect/open data connection to client for data transfer: /0.25
+
+
+Properly executing FTP commands and sending correct reply - /5
+    
+    Create in code base directory folders of "bob" , "proj1", "files"
+    Login from Bob and test user.
+
+    Perform these tests:
+
+    For testing PWD, !PWD, CWD, !CWD - /2
+    First with bob user:
+    1. PWD : Expected Response: "/Users/Desktop/OS"
+    2. !PWD : Expected Response: "/Users/Desktop/OS"
+    3. CWD bob : Expected Response: Succesful change local directory
+    4. PWD : Expected Response: "/Users/Desktop/OS/bob"
+    5. !PWD : Expected Response: "/Users/Desktop/OS"
+    6. !CWD proj1 : Expected Response: Succesful change local directory
+    7. !PWD : Expected Response: "/Users/Desktop/OS/proj1"
+    8. PWD : Expected Response: "/Users/Desktop/OS/bob"
+
+    Second with test user:
+    1. PWD : Expected Response: "/Users/Desktop/OS"
+    2. CWD proj1 : Expected Response: Succesful change local directory
+    4. PWD : Expected Response: "/Users/Desktop/OS/proj1"
+
+    Third with any of the user:
+    1.CWD directory_that_does_not_exist
+    Expected Response: Failure changing directory: directory does not exist
+    2.!CWD directory_that_does_not_exist
+    Expected Response: Failure changing directory: directory does not exist
+
+
+    For testing LIST and !LIST - /1
+    With both users logged in, in base direcotry:
+
+    1:LIST/!LIST
+    Expected Response:
+    200 PORT command successful.
+    150 File status okay; about to open. data connection.
+    226 Transfer completed.
+    sample.txt
+    sample.pdf
+    sample.mp4
+
+    2. change server directroy of bob to files
+    3. LIST
+    200 PORT command successful.
+    150 File status okay; about to open. data connection.
+    226 Transfer completed.
+    Currently files directory if empty no file list
+
+    4. !LIST
+    Expected Response:
+    200 PORT command successful.
+    150 File status okay; about to open. data connection.
+    226 Transfer completed.
+    sample.txt
+    sample.pdf
+    sample.mp4
+
+    5. Repeat 1 for test user
+
+    For testing STOR and RETR - /2
+    This evalaution is irrespective of wether file is transfered properly (corrupted/incomplete/complete)
+
+    With both users logged in,:
+    Chnage local directory of test user to test, and bob to bob
+    Change server directory of both users to files
+    Assuming the bob directoy contains sample.mp4, sample.txt and sample.pdf
+
+    1. TEST STOR existent file
+        1: STOR sample.mp4
+        2: Expected Response:
+        200 PORT command successful.
+        150 File status okay; about to open. data connection.
+        226 Transfer completed.
+
+    2. repeat 1 with sample.txt and sample.pdf
+
+    3. TEST RETR existent file (from test user)
+        1: RETR sample.mp4
+        2: Expected Response:
+        200 PORT command successful.
+        150 File status okay; about to open. data connection.
+        226 Transfer completed.
+
+    4. repeat 3 with sample.txt and sample.pdf
+
+    5. TEST STOR with non existen file
+        1: STOR non_existent.mp4
+        2: Expected Response: File does not exist
+
+    6. TEST RETR with non existen file
+        1: RETR non_existent.mp4
+        2: Expected Response: File does not exist
+
+
+
+Properly transferring files (binary, plaintext) of any type and size  - /3
+
+    1. After the above test:
+        1. Check if sample.txt, sample.mp4, sameple.pdf files are transfered into files folder (transfer through STOR) and test folder (transfer through RETR) 
+        2. Check if the files are error free, complete with no corruption
+
+
+
+Properly closing the TCP connections (control and data channel) - /2
+
+    TEST QUIT
+    1: QUIT
+    Expected Response: 221 Service closing control connection.
+
+    Also, the closing of connection with one client should not affect the server, in particular the server should keep runing and the other connection should kept maintained.
+
+
+Coding style and usage of meaningful comments - /2
+
+
+
+
+

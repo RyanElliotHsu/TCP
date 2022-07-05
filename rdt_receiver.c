@@ -103,8 +103,9 @@ int main(int argc, char **argv) {
         }
 
         //event if packet is not the expected packet
-        if(recvpkt->hdr.seqno + DATA_SIZE != expected_Seqno)
+        if(recvpkt->hdr.seqno != expected_Seqno)
         {
+            printf("the seqno we expected was %d but we got %d", expected_Seqno, recvpkt->hdr.seqno );
             sndpkt = make_packet(0);
             sndpkt->hdr.ackno = expected_Seqno - DATA_SIZE;
             sndpkt->hdr.ctr_flags = ACK;
@@ -120,6 +121,7 @@ int main(int argc, char **argv) {
         //event if packet is correct and in order
         else
         {
+            printf("we got the right packet with %d ", recvpkt->hdr.seqno);
             gettimeofday(&tp, NULL);
             VLOG(DEBUG, "%lu, %d, %d", tp.tv_sec, recvpkt->hdr.data_size, recvpkt->hdr.seqno);
 
@@ -133,6 +135,7 @@ int main(int argc, char **argv) {
                     (struct sockaddr *) &clientaddr, clientlen) < 0) {
                 error("ERROR in sendto");
             }
+            expected_Seqno += DATA_SIZE;
         }
         
     }
