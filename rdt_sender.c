@@ -127,19 +127,19 @@ void add_packet(FILE *fp, int len)
 
 void send_packets()
 {   
-    printf("got into send packet func");
+    //printf("got into send packet func");
     //get size of filled array - in the end window can not be fully filled
     //addition of packets in start will maintain 10 window size at all times when possible
-    int filled_window = (int)(sizeof(window)/sizeof(window[0]));
-    printf("filled_window : %d\n", filled_window);
+    //int filled_window = (int)(sizeof(window)/sizeof(window[0]));
+    //printf("filled_window : %d\n", filled_window);
     for (int i=0; i<pktsStored; i++)
     {
-        printf("got into to for loop for sending\n");
+        //printf("got into to for loop for sending\n");
         // printf("sockfd before sending pack num %d is %d\n", i, sockfd);
         //check if not sent already - wont be needed but for extra security here
         if (window[i]->hdr.sent_flag==0)
         {   
-            printf("send flag zero trying to send\n");
+            //printf("send flag zero trying to send\n");
             if(sendto(sockfd, window[i], TCP_HDR_SIZE + get_data_size(window[i]), 0,
                     ( const struct sockaddr *)&serveraddr, serverlen) < 0)
             {
@@ -228,7 +228,7 @@ int main (int argc, char **argv)
         while (pktsStored<WINDOW_SIZE)
         {
             add_packet(fp,len);
-            printf("added packet\n");
+            //printf("added packet\n");
             // printf("sockfd after adding the packet no . %d is %d\n", pktsStored,sockfd);
 
             //end program if EOF
@@ -240,9 +240,10 @@ int main (int argc, char **argv)
         //print array
         for (int i=0; i<WINDOW_SIZE; i++) {
             if (window[i]!=NULL) {
-                printf("%d |\n", window[i]->hdr.seqno);
+                printf("%d |", window[i]->hdr.seqno);
             }
         }
+        printf("\n");
         
         //send all packets in array
         // printf("going to send all in window\n");
@@ -294,6 +295,10 @@ int main (int argc, char **argv)
             //refill the window
             for (int i = WINDOW_SIZE-deleted; i < WINDOW_SIZE; i++)
             {
+                if (end_reached==1)
+                {
+                    break;
+                }
                 add_packet(fp,len);
             }
         }
