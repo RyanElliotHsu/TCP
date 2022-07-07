@@ -33,12 +33,9 @@ char buffer[DATA_SIZE];
 tcp_packet *window[WINDOW_SIZE];
 //number of packets in window  
 int pktsStored=0;
-
 //check for EOF
 int end_reached = 0;
     
-
-
 void resend_packets(int sig)
 {
     if (sig == SIGALRM)
@@ -80,12 +77,10 @@ void start_timer()
     setitimer(ITIMER_REAL, &timer, NULL);
 }
 
-
 void stop_timer()
 {
     sigprocmask(SIG_BLOCK, &sigmask, NULL);
 }
-
 
 /*
  * init_timer: Initialize timer
@@ -107,8 +102,6 @@ void init_timer(int delay, void (*sig_handler)(int))
 void add_packet(FILE *fp, int len)
 {
     len = fread(buffer, 1, DATA_SIZE, fp);
-    // printf("len is %d\n",len);
-    // printf("Buffer has %s",buffer);
     if (len <= 0) {
         end_reached = 1;
     } else {
@@ -127,19 +120,18 @@ void add_packet(FILE *fp, int len)
 
 void send_packets()
 {   
-    //printf("got into send packet func");
+    printf("got into send packet func");
     //get size of filled array - in the end window can not be fully filled
     //addition of packets in start will maintain 10 window size at all times when possible
-    //int filled_window = (int)(sizeof(window)/sizeof(window[0]));
-    //printf("filled_window : %d\n", filled_window);
+    int filled_window = (int)(sizeof(window)/sizeof(window[0]));
+    printf("filled_window : %d\n", filled_window);
     for (int i=0; i<pktsStored; i++)
     {
-        //printf("got into to for loop for sending\n");
-        // printf("sockfd before sending pack num %d is %d\n", i, sockfd);
+        printf("got into to for loop for sending\n");
         //check if not sent already - wont be needed but for extra security here
         if (window[i]->hdr.sent_flag==0)
         {   
-            //printf("send flag zero trying to send\n");
+            printf("send flag zero trying to send\n");
             if(sendto(sockfd, window[i], TCP_HDR_SIZE + get_data_size(window[i]), 0,
                     ( const struct sockaddr *)&serveraddr, serverlen) < 0)
             {
@@ -169,7 +161,6 @@ int main (int argc, char **argv)
     int lastACKed=0;
     int ackCount;
     int deleted;
-    
 
     /* check command line arguments */
     if (argc != 4) {
@@ -187,11 +178,6 @@ int main (int argc, char **argv)
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) 
         error("ERROR opening socket");
-    // else{
-    //     printf("socket opened\n");
-    // }
-
-    // printf("sockfd is %d\n", sockfd);
 
     /* initialize server server details */
     bzero((char *) &serveraddr, sizeof(serveraddr));
@@ -202,17 +188,10 @@ int main (int argc, char **argv)
         fprintf(stderr,"ERROR, invalid host %s\n", hostname);
         exit(0);
     }
-    // else{
-    //     printf("valid host\n");
-    // }
-
-    // printf("sockfd is %d\n", sockfd);
 
     /* build the server's Internet address */
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_port = htons(portno);
-
-    // printf("builded server address\n");
 
     assert(MSS_SIZE - TCP_HDR_SIZE > 0);
 
@@ -221,33 +200,19 @@ int main (int argc, char **argv)
     
     while (1)
     {
-        // printf("started loop\n");
-
-        
         //fill the (array of packets sent) to (window size)
         while (pktsStored<WINDOW_SIZE)
         {
             add_packet(fp,len);
-            //printf("added packet\n");
-            // printf("sockfd after adding the packet no . %d is %d\n", pktsStored,sockfd);
+            printf("added packet\n");
 
             //end program if EOF
             if (end_reached == 1) {
                 break;
             }
         }
-
-        //print array
-        for (int i=0; i<WINDOW_SIZE; i++) {
-            if (window[i]!=NULL) {
-                printf("%d |", window[i]->hdr.seqno);
-            }
-        }
-        printf("\n");
         
         //send all packets in array
-        // printf("going to send all in window\n");
-        // printf("sockfd before sending all is %d\n", sockfd);
         send_packets();
         if (end_reached==1){
             sndpkt = make_packet(0);
@@ -257,9 +222,7 @@ int main (int argc, char **argv)
                         (const struct sockaddr *)&serveraddr, serverlen);
                 return 0;
         }
-        
-        // printf("sockfd after sending all is %d\n", sockfd);
-        
+                
         //receive
         if(recvfrom(sockfd, buffer, MSS_SIZE, 0,
                             (struct sockaddr *) &serveraddr, (socklen_t *)&serverlen) < 0)
@@ -273,10 +236,7 @@ int main (int argc, char **argv)
         {
             ackCount = 1;
             lastACKed = recvpkt->hdr.ackno;
-            printf("Acknowledgment upto sequence no %d\n", lastACKed);
-            //remove all packets up to ACK received
-            //could (maybe) make a seperate function for this
-            //remember to free pkt pointers while removing them
+
             for (int i = 0; i < WINDOW_SIZE; i++)
             {
                 if (window[i]->hdr.seqno < lastACKed)
@@ -295,10 +255,6 @@ int main (int argc, char **argv)
             //refill the window
             for (int i = WINDOW_SIZE-deleted; i < WINDOW_SIZE; i++)
             {
-                if (end_reached==1)
-                {
-                    break;
-                }
                 add_packet(fp,len);
             }
         }

@@ -12,13 +12,6 @@
 #include "common.h"
 #include "packet.h"
 
-
-/*
- * You are required to change the implementation to support
- * window size greater than one.
- * In the current implementation the window size is one, hence we have
- * only one send and receive packet
- */
 tcp_packet *recvpkt;
 tcp_packet *sndpkt;
 
@@ -55,11 +48,6 @@ int main(int argc, char **argv) {
     if (sockfd < 0) 
         error("ERROR opening socket");
 
-    /* setsockopt: Handy debugging trick that lets 
-     * us rerun the server immediately after we kill it; 
-     * otherwise we have to wait about 20 secs. 
-     * Eliminates "ERROR on binding: Address already in use" error. 
-     */
     optval = 1;
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, 
             (const void *)&optval , sizeof(int));
@@ -79,9 +67,6 @@ int main(int argc, char **argv) {
                 sizeof(serveraddr)) < 0) 
         error("ERROR on binding");
 
-    /* 
-     * main loop: wait for a datagram, then echo it
-     */
     VLOG(DEBUG, "epoch time, bytes received, sequence number");
 
     clientlen = sizeof(clientaddr);
@@ -89,7 +74,6 @@ int main(int argc, char **argv) {
         /*
          * recvfrom: receive a UDP datagram from a client
          */
-        //VLOG(DEBUG, "waiting from server \n");
         if (recvfrom(sockfd, buffer, MSS_SIZE, 0,
                 (struct sockaddr *) &clientaddr, (socklen_t *)&clientlen) < 0) {
             error("ERROR in recvfrom");
@@ -97,7 +81,7 @@ int main(int argc, char **argv) {
         recvpkt = (tcp_packet *) buffer;
         assert(get_data_size(recvpkt) <= DATA_SIZE);
         if ( recvpkt->hdr.data_size == 0) {
-            //VLOG(INFO, "End Of File has been reached");
+            VLOG(INFO, "End Of File has been reached");
             fclose(fp);
             break;
         }
@@ -105,7 +89,7 @@ int main(int argc, char **argv) {
         //event if packet is not the expected packet
         if(recvpkt->hdr.seqno != expected_Seqno)
         {
-            printf("the seqno we expected was %d but we got %d\n", expected_Seqno, recvpkt->hdr.seqno );
+            printf("the seqno we expected was %d but we got %d", expected_Seqno, recvpkt->hdr.seqno );
             sndpkt = make_packet(0);
             sndpkt->hdr.ackno = expected_Seqno - DATA_SIZE;
             sndpkt->hdr.ctr_flags = ACK;
@@ -121,8 +105,7 @@ int main(int argc, char **argv) {
         //event if packet is correct and in order
         else
         {
-            expected_Seqno += DATA_SIZE;
-            printf("we got the right packet with %d \n", recvpkt->hdr.seqno);
+            printf("we got the right packet with %d ", recvpkt->hdr.seqno);
             gettimeofday(&tp, NULL);
             VLOG(DEBUG, "%lu, %d, %d", tp.tv_sec, recvpkt->hdr.data_size, recvpkt->hdr.seqno);
 
@@ -130,13 +113,17 @@ int main(int argc, char **argv) {
             fseek(fp, recvpkt->hdr.seqno, SEEK_SET);
             fwrite(recvpkt->data, 1, recvpkt->hdr.data_size, fp);
             sndpkt = make_packet(0);
+
+            //send ack for received packet
             sndpkt->hdr.ackno = recvpkt->hdr.seqno + recvpkt->hdr.data_size;
             sndpkt->hdr.ctr_flags = ACK;
             if (sendto(sockfd, sndpkt, TCP_HDR_SIZE, 0, 
                     (struct sockaddr *) &clientaddr, clientlen) < 0) {
                 error("ERROR in sendto");
             }
-            
+
+            //set next expected sequence number
+            expected_Seqno += DATA_SIZE;
         }
         
     }
